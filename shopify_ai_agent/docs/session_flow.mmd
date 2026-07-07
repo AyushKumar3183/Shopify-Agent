@@ -1,0 +1,52 @@
+%% Shopify Support Automation — Session State Flow
+%% Export: mmdc -i docs/session_flow.mmd -o docs/session_flow.png -b transparent
+
+flowchart LR
+    classDef input fill:#E3F2FD,stroke:#1565C0,stroke-width:2px
+    classDef agent fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px
+    classDef state fill:#FFF8E1,stroke:#F9A825,stroke-width:2px
+    classDef final fill:#E0F2F1,stroke:#00695C,stroke-width:2px
+
+    MSG(["Customer Message"]):::input
+
+    IA["Intent Agent"]:::agent
+    PA["Priority Agent"]:::agent
+    RA["Reply Agent"]:::agent
+    EA["Escalation Agent"]:::agent
+    ROOT["SupportRootAgent"]:::agent
+
+    IR["state[intent_result]<br/>{ intent }"]:::state
+    PR["state[priority_result]<br/>{ priority }"]:::state
+    RR["state[reply_result]<br/>{ reply }"]:::state
+    ER["state[escalation_result]<br/>{ escalate }"]:::state
+    FR["state[final_response]<br/>{ intent, priority,<br/>reply, escalate }"]:::final
+
+    MSG --> IA
+    IA -->|"output_key"| IR
+
+    IR -->|"reads {intent_result}"| PA
+    PA -->|"output_key"| PR
+
+    IR --> RA
+    PR --> RA
+    RA -->|"output_key"| RR
+
+    IR --> EA
+    PR --> EA
+    RR --> EA
+    EA -->|"output_key"| ER
+
+    IR --> ROOT
+    PR --> ROOT
+    RR --> ROOT
+    ER --> ROOT
+    ROOT -->|"build_final_response()"| FR
+
+    subgraph Legend["State Key Contract"]
+        direction TB
+        L1["INTENT_RESULT_KEY = intent_result"]
+        L2["PRIORITY_RESULT_KEY = priority_result"]
+        L3["REPLY_RESULT_KEY = reply_result"]
+        L4["ESCALATION_RESULT_KEY = escalation_result"]
+        L5["FINAL_RESPONSE_KEY = final_response"]
+    end

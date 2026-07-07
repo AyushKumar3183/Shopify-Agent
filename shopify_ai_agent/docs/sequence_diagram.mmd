@@ -1,0 +1,50 @@
+%% Shopify Support Automation — Request Sequence
+%% Export: mmdc -i docs/sequence_diagram.mmd -o docs/sequence_diagram.png -b transparent
+
+sequenceDiagram
+    autonumber
+    actor Customer
+    participant API as FastAPI<br/>POST /support
+    participant Runner as ADK Runner
+    participant Root as SupportRootAgent
+    participant Intent as Intent Agent
+    participant Priority as Priority Agent
+    participant Reply as Reply Agent
+    participant Escalation as Escalation Agent
+    participant State as Session State
+    participant Agg as build_final_response()
+
+    Customer->>API: SupportRequest { message }
+    API->>Runner: run_async(user_message)
+    Runner->>Root: invoke orchestrator
+
+    Root->>Intent: run_async(ctx)
+    Intent->>Intent: Gemini classify intent
+    Intent->>State: write intent_result
+    Intent-->>Root: event
+
+    Root->>Priority: run_async(ctx)
+    Priority->>State: read intent_result
+    Priority->>Priority: Gemini assign priority
+    Priority->>State: write priority_result
+    Priority-->>Root: event
+
+    Root->>Reply: run_async(ctx)
+    Reply->>State: read intent_result, priority_result
+    Reply->>Reply: Gemini generate reply
+    Reply->>State: write reply_result
+    Reply-->>Root: event
+
+    Root->>Escalation: run_async(ctx)
+    Escalation->>State: read intent, priority, reply
+    Escalation->>Escalation: Gemini decide escalate
+    Escalation->>State: write escalation_result
+    Escalation-->>Root: event
+
+    Root->>Agg: build_final_response(state)
+    Agg->>State: read all specialist keys
+    Agg-->>Root: SupportResponse
+    Root->>State: write final_response
+    Root-->>Runner: final event (JSON)
+    Runner-->>API: SupportResponse
+    API-->>Customer: 200 OK { intent, priority, reply, escalate }

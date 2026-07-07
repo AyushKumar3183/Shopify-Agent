@@ -1,0 +1,75 @@
+%% Shopify Support Automation — System Architecture
+%% Export: mmdc -i docs/architecture.mmd -o docs/architecture.png -b transparent -w 1400
+
+flowchart LR
+    classDef client fill:#E8F4FD,stroke:#1565C0,stroke-width:2px,color:#0D47A1
+    classDef api fill:#E8F5E9,stroke:#2E7D32,stroke-width:2px,color:#1B5E20
+    classDef runtime fill:#FFF3E0,stroke:#EF6C00,stroke-width:2px,color:#E65100
+    classDef orchestrator fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C
+    classDef agent fill:#ECEFF1,stroke:#455A64,stroke-width:2px,color:#263238
+    classDef logic fill:#FFF8E1,stroke:#F9A825,stroke-width:2px,color:#F57F17
+    classDef output fill:#E0F2F1,stroke:#00695C,stroke-width:2px,color:#004D40
+    classDef state fill:#FFF8E1,stroke:#F9A825,stroke-width:1px,color:#F57F17
+    classDef layer fill:#FAFAFA,stroke:#9E9E9E,stroke-width:1px,color:#424242
+
+    subgraph EXEC["Execution Pipeline"]
+        direction TB
+
+        CustomerIn(["Customer / API Client"]):::client
+
+        subgraph APILayer["API Layer"]
+            FastAPI["POST /support<br/>FastAPI"]:::api
+        end
+
+        subgraph RuntimeLayer["Runtime Layer"]
+            Runner["ADK Runner<br/>InMemorySessionService"]:::runtime
+        end
+
+        subgraph OrchestrationLayer["Orchestration Layer"]
+            Root["SupportRootAgent<br/>BaseAgent Orchestrator"]:::orchestrator
+        end
+
+        subgraph AgentLayer["Agent Layer"]
+            direction TB
+            Intent["Intent Agent<br/>Gemini 2.5 Flash"]:::agent
+            Priority["Priority Agent<br/>Gemini 2.5 Flash"]:::agent
+            Reply["Reply Agent<br/>Gemini 2.5 Flash"]:::agent
+            Escalation["Escalation Agent<br/>Gemini 2.5 Flash"]:::agent
+        end
+
+        subgraph LogicLayer["Business Logic Layer"]
+            Aggregate["build_final_response()<br/>Deterministic Python"]:::logic
+        end
+
+        subgraph ResponseLayer["Response Layer"]
+            Response["SupportResponse<br/>(Pydantic Model)"]:::output
+        end
+
+        CustomerOut(["Customer / API Client"]):::client
+
+        CustomerIn -->|"message: string"| FastAPI
+        FastAPI --> Runner
+        Runner --> Root
+        Root -->|"Intent Classification"| Intent
+        Intent -->|"Priority Assessment"| Priority
+        Priority -->|"Reply Generation"| Reply
+        Reply -->|"Escalation Decision"| Escalation
+        Escalation --> Aggregate
+        Aggregate --> Response
+        Response -->|"JSON response"| CustomerOut
+    end
+
+    subgraph SessionState["ADK Session State"]
+        direction TB
+        S1["intent_result"]:::state
+        S2["priority_result"]:::state
+        S3["reply_result"]:::state
+        S4["escalation_result"]:::state
+        S5["final_response"]:::state
+    end
+
+    Intent -.-> S1
+    Priority -.-> S2
+    Reply -.-> S3
+    Escalation -.-> S4
+    Aggregate -.-> S5
