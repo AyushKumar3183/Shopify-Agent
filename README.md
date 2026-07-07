@@ -47,7 +47,11 @@ Customer / API Client
 │   ├── root_agent.py
 │   ├── main.py
 │   ├── schemas.py
-│   └── requirements.txt
+│   ├── constants.py
+│   ├── state_utils.py
+│   ├── config.py
+│   ├── requirements.txt
+│   └── .env.example
 ├── .gitignore
 └── README.md
 ```
@@ -66,6 +70,7 @@ cd Shopify-Agent/shopify_ai_agent
 ```bash
 python3 -m venv venv
 source venv/bin/activate        # macOS / Linux
+# Or from repo root: source ../venv/bin/activate if venv is one level up
 ```
 
 3. Install dependencies:
@@ -125,10 +130,17 @@ Expected response:
 | Document | Description |
 |----------|-------------|
 | [Architecture](shopify_ai_agent/docs/architecture.md) | System design, layers, session state, sequence diagrams |
-| [Module README](shopify_ai_agent/README.md) | App-level setup reference |
+
+## API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/health` | Service health check |
+| `POST` | `/support` | Run support workflow on a customer message |
 
 ## Notes
 
 - Specialist agents use `output_schema` and `output_key` for ADK session state.
 - Final response is built deterministically in `state_utils.build_final_response()` — no LLM aggregation.
+- Model name is set in `constants.py` (`GEMINI_MODEL = "gemini-2.5-flash"`).
 - Never commit `.env` — API keys are loaded from environment variables.
